@@ -124,7 +124,7 @@ See [Architecture Documentation](docs/architecture.md) for details.
 1. **Clone the repository**
 
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/metantonio/parallel-inference-stack
 cd paralell-test
 ```
 
