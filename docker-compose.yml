@@ -1,0 +1,400 @@
+version: '3.8'
+
+services:
+  # ============================================
+  # NGINX Load Balancer & Reverse Proxy
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: ai-inference-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - api-1
+      - api-2
+      - api-3
+    networks:
+      - frontend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ============================================
+  # FastAPI API Servers (3 replicas)
+  # ============================================
+  api-1:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: ai-inference-api-1
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/inference
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - LOG_LEVEL=info
+      - WORKERS=4
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  api-2:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: ai-inference-api-2
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/inference
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - LOG_LEVEL=info
+      - WORKERS=4
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  api-3:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: ai-inference-api-3
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/inference
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+      - LOG_LEVEL=info
+      - WORKERS=4
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - frontend
+      - backend
+    restart: unless-stopped
+
+  # ============================================
+  # Ray Serve GPU Workers
+  # ============================================
+  ray-head:
+    build:
+      context: ./backend/workers
+      dockerfile: Dockerfile.ray
+    container_name: ai-inference-ray-head
+    command: ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-gpus=0
+    ports:
+      - "8265:8265"  # Ray Dashboard
+      - "10001:10001"  # Ray Client
+    environment:
+      - RAY_REDIS_ADDRESS=ray-head:6379
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ray", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gpu-worker-1:
+    build:
+      context: ./backend/workers
+      dockerfile: Dockerfile.ray
+    container_name: ai-inference-gpu-worker-1
+    command: ray start --address=ray-head:6379 --num-gpus=1
+    environment:
+      - RAY_REDIS_ADDRESS=ray-head:6379
+      - CUDA_VISIBLE_DEVICES=0
+      - MODEL_PATH=/models
+      - BATCH_SIZE=32
+      - MAX_BATCH_WAIT_MS=100
+    volumes:
+      - ./models:/models:ro
+      - gpu-cache-1:/root/.cache
+    depends_on:
+      - ray-head
+    networks:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['0']
+              capabilities: [gpu]
+
+  gpu-worker-2:
+    build:
+      context: ./backend/workers
+      dockerfile: Dockerfile.ray
+    container_name: ai-inference-gpu-worker-2
+    command: ray start --address=ray-head:6379 --num-gpus=1
+    environment:
+      - RAY_REDIS_ADDRESS=ray-head:6379
+      - CUDA_VISIBLE_DEVICES=0  # Ray manages this, but set for clarity
+      - MODEL_PATH=/models
+      - BATCH_SIZE=32
+      - MAX_BATCH_WAIT_MS=100
+    volumes:
+      - ./models:/models:ro
+      - gpu-cache-2:/root/.cache
+    depends_on:
+      - ray-head
+    networks:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['1']
+              capabilities: [gpu]
+
+  gpu-worker-3:
+    build:
+      context: ./backend/workers
+      dockerfile: Dockerfile.ray
+    container_name: ai-inference-gpu-worker-3
+    command: ray start --address=ray-head:6379 --num-gpus=1
+    environment:
+      - RAY_REDIS_ADDRESS=ray-head:6379
+      - CUDA_VISIBLE_DEVICES=0
+      - MODEL_PATH=/models
+      - BATCH_SIZE=32
+      - MAX_BATCH_WAIT_MS=100
+    volumes:
+      - ./models:/models:ro
+      - gpu-cache-3:/root/.cache
+    depends_on:
+      - ray-head
+    networks:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              device_ids: ['2']
+              capabilities: [gpu]
+
+  # ============================================
+  # Celery Workers (Task Queue Processors)
+  # ============================================
+  celery-worker:
+    build:
+      context: ./backend/api
+      dockerfile: Dockerfile
+    container_name: ai-inference-celery-worker
+    command: celery -A app.tasks worker --loglevel=info --concurrency=10
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/inference
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - RAY_ADDRESS=ray-head:10001
+      - S3_ENDPOINT=http://minio:9000
+      - S3_ACCESS_KEY=minioadmin
+      - S3_SECRET_KEY=minioadmin
+    depends_on:
+      - redis
+      - postgres
+      - ray-head
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: ai-inference-postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=inference
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Redis (Cache + Queue)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: ai-inference-redis
+    command: redis-server --appendonly yes --maxmemory 2gb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # MinIO (S3-Compatible Storage)
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: ai-inference-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - backend
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # ============================================
+  # Prometheus (Metrics Collection)
+  # ============================================
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ai-inference-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ============================================
+  # Grafana (Visualization)
+  # ============================================
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ai-inference-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    networks:
+      - backend
+    restart: unless-stopped
+
+  # ============================================
+  # NVIDIA DCGM Exporter (GPU Metrics)
+  # ============================================
+  dcgm-exporter:
+    image: nvcr.io/nvidia/k8s/dcgm-exporter:3.1.3-3.1.4-ubuntu20.04
+    container_name: ai-inference-dcgm-exporter
+    ports:
+      - "9400:9400"
+    networks:
+      - backend
+    restart: unless-stopped
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              capabilities: [gpu]
+
+  # ============================================
+  # Frontend (React App)
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: ai-inference-frontend
+    environment:
+      - VITE_API_URL=http://localhost/api
+    ports:
+      - "5173:80"
+    depends_on:
+      - nginx
+    networks:
+      - frontend
+    restart: unless-stopped
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  frontend:
+    driver: bridge
+  backend:
+    driver: bridge
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
+  prometheus-data:
+  grafana-data:
+  gpu-cache-1:
+  gpu-cache-2:
+  gpu-cache-3:

@@ -1,0 +1,85 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'ai-inference'
+    environment: 'production'
+
+# Alertmanager configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+          # - alertmanager:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Prometheus itself
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # FastAPI servers
+  - job_name: 'api-servers'
+    static_configs:
+      - targets:
+        - 'api-1:8000'
+        - 'api-2:8000'
+        - 'api-3:8000'
+    metrics_path: '/metrics'
+
+  # Ray Serve workers
+  - job_name: 'ray-workers'
+    static_configs:
+      - targets:
+        - 'ray-head:8265'
+    metrics_path: '/metrics'
+
+  # NVIDIA DCGM Exporter (GPU metrics)
+  - job_name: 'gpu-metrics'
+    static_configs:
+      - targets:
+        - 'dcgm-exporter:9400'
+
+  # PostgreSQL
+  - job_name: 'postgres'
+    static_configs:
+      - targets:
+        - 'postgres:9187'
+
+  # Redis
+  - job_name: 'redis'
+    static_configs:
+      - targets:
+        - 'redis:9121'
+
+  # Node exporter (system metrics)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets:
+        - 'node-exporter:9100'
+
+  # Kubernetes pods (if using K8s)
+  # - job_name: 'kubernetes-pods'
+  #   kubernetes_sd_configs:
+  #     - role: pod
+  #       namespaces:
+  #         names:
+  #           - ai-inference
+  #   relabel_configs:
+  #     - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+  #       action: keep
+  #       regex: true
+  #     - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+  #       action: replace
+  #       target_label: __metrics_path__
+  #       regex: (.+)
+  #     - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+  #       action: replace
+  #       regex: ([^:]+)(?::\d+)?;(\d+)
+  #       replacement: $1:$2
+  #       target_label: __address__

@@ -1,0 +1,51 @@
+Quiero que diseñes una arquitectura completa (stack tecnológico, componentes, diagramas de flujo y justificaciones) para una aplicación que procese solicitudes paralelas de múltiples usuarios hacia un modelo de IA alojado on-premise y que luego pueda migrarse fácilmente a AWS.
+
+Requisitos:
+
+1. Selecciona por mí todo el stack: 
+   - frontend (React/Tailwind o equivalente),
+   - backend (Python/FastAPI o Node),
+   - orquestación (Docker, Docker Compose, o Kubernetes si lo recomiendas),
+   - balanceo de carga,
+   - procesamiento paralelo,
+   - almacenamiento,
+   - logging y monitoreo.
+
+2. El sistema debe:
+   - Aceptar miles de requests concurrentes.
+   - Enviar cada request a un worker GPU disponible.
+   - Poder distribuir la carga entre múltiples GPUs (GPU 0, GPU 1, GPU 2…).
+   - Permitir escalamiento horizontal agregando más nodos con GPU.
+   - Soportar colas de trabajo con priorización (opcional).
+   - Garantizar que ningún request bloquee a otro.
+
+3. Decide si es mejor usar:
+   - Docker + Docker Compose,
+   - Kubernetes,
+   - Un servicio de colas como Redis, RabbitMQ o Kafka,
+   - Un API Gateway (Nginx o AWS API Gateway cuando se migre).
+
+4. Describe:
+   - Cómo procesar solicitudes en paralelo.
+   - Cómo asignar dinámicamente GPUs (CUDA_VISIBLE_DEVICES, o librerías como Ray, Triton Inference Server, o vLLM).
+   - Cómo manejar timeouts, reintentos y saturación.
+   - Cómo asegurarte de que el sistema sea fácilmente portable a AWS (EKS, ECS, EC2 con GPU, o AWS Inferentia si aplica).
+
+5. Incluye:
+   - Un diagrama de arquitectura.
+   - Archivos de ejemplo: docker-compose.yml o manifests de Kubernetes.
+   - Ejemplo de un endpoint FastAPI o Node para enviar requests a la cola.
+   - Ejemplo de un worker que procesa tareas usando GPU.
+
+6. Optimiza para:
+   - Despliegues on-premise.
+   - Migración sencilla a AWS sin reescribir código.
+   - Mínimo downtime.
+   - Uso eficiente de múltiples GPUs y batch inference.
+
+Entrega:
+- Propuesta de arquitectura.
+- Stack recomendado y por qué.
+- Diagramas (ASCII o Mermaid).
+- Código de ejemplo.
+- Checklist para llevarlo a producción.
