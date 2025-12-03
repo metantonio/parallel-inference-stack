@@ -48,7 +48,11 @@ interface TaskResult {
     processing_time?: number;
 }
 
-export default function InferenceForm() {
+interface InferenceFormProps {
+    onLogout: () => void;
+}
+
+export default function InferenceForm({ onLogout }: InferenceFormProps) {
     const [inputData, setInputData] = useState('{"text": "Hello, world!"}');
     const [priority, setPriority] = useState<'high' | 'normal' | 'low'>('normal');
     const [taskId, setTaskId] = useState<string | null>(null);
@@ -117,6 +121,15 @@ export default function InferenceForm() {
                     <p className="text-blue-200 mb-8">
                         Parallel GPU-based inference with automatic load balancing
                     </p>
+
+                    <div className="absolute top-8 right-8">
+                        <button
+                            onClick={onLogout}
+                            className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-lg transition-all duration-200 border border-white/30"
+                        >
+                            Sign Out
+                        </button>
+                    </div>
 
                     {/* Input Form */}
                     <form onSubmit={handleSubmit} className="space-y-6">
@@ -199,9 +212,9 @@ export default function InferenceForm() {
                                             <div className="flex justify-between items-center">
                                                 <span className="text-gray-300">Status:</span>
                                                 <span className={`px-3 py-1 rounded-full text-sm font-semibold ${result.status === 'completed' ? 'bg-green-500/20 text-green-300' :
-                                                        result.status === 'failed' ? 'bg-red-500/20 text-red-300' :
-                                                            result.status === 'processing' ? 'bg-yellow-500/20 text-yellow-300' :
-                                                                'bg-blue-500/20 text-blue-300'
+                                                    result.status === 'failed' ? 'bg-red-500/20 text-red-300' :
+                                                        result.status === 'processing' ? 'bg-yellow-500/20 text-yellow-300' :
+                                                            'bg-blue-500/20 text-blue-300'
                                                     }`}>
                                                     {result.status.toUpperCase()}
                                                 </span>
