@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 interface LoginProps {
     onLogin: (token: string) => void;
@@ -19,22 +19,19 @@ export default function Login({ onLogin }: LoginProps) {
         setLoading(true);
 
         try {
-            const formData = new FormData();
-            formData.append('username', username);
-            formData.append('password', password);
+            const params = new URLSearchParams();
+            params.append('username', username);
+            params.append('password', password);
 
-            const response = await axios.post(`${API_URL}/token`, formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const response = await axios.post(`${API_URL}/token`, params);
 
             const token = response.data.access_token;
             localStorage.setItem('auth_token', token);
             onLogin(token);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Login failed:', err);
-            setError('Invalid username or password');
+            const errorMessage = err.response?.data?.detail || 'Invalid username or password';
+            setError(errorMessage);
         } finally {
             setLoading(false);
         }
