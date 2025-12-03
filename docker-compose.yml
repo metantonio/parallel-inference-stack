@@ -21,7 +21,7 @@ services:
       - frontend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      test: [ "CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -42,6 +42,9 @@ services:
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-to-a-random-secret-key}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_MINUTES=${JWT_EXPIRATION_MINUTES:-60}
       - LOG_LEVEL=info
       - WORKERS=4
     depends_on:
@@ -52,7 +55,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -70,6 +73,9 @@ services:
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-to-a-random-secret-key}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_MINUTES=${JWT_EXPIRATION_MINUTES:-60}
       - LOG_LEVEL=info
       - WORKERS=4
     depends_on:
@@ -93,6 +99,9 @@ services:
       - S3_ENDPOINT=http://minio:9000
       - S3_ACCESS_KEY=minioadmin
       - S3_SECRET_KEY=minioadmin
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-change-this-to-a-random-secret-key}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_MINUTES=${JWT_EXPIRATION_MINUTES:-60}
       - LOG_LEVEL=info
       - WORKERS=4
     depends_on:
@@ -113,15 +122,15 @@ services:
     container_name: ai-inference-ray-head
     command: ray start --head --port=6379 --dashboard-host=0.0.0.0 --num-gpus=0
     ports:
-      - "8265:8265"  # Ray Dashboard
-      - "10001:10001"  # Ray Client
+      - "8265:8265" # Ray Dashboard
+      - "10001:10001" # Ray Client
     environment:
       - RAY_REDIS_ADDRESS=ray-head:6379
     networks:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "ray", "status"]
+      test: [ "CMD", "ray", "status" ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -151,8 +160,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['0']
-              capabilities: [gpu]
+              device_ids: [ '0' ]
+              capabilities: [ gpu ]
 
   gpu-worker-2:
     build:
@@ -162,7 +171,7 @@ services:
     command: ray start --address=ray-head:6379 --num-gpus=1
     environment:
       - RAY_REDIS_ADDRESS=ray-head:6379
-      - CUDA_VISIBLE_DEVICES=0  # Ray manages this, but set for clarity
+      - CUDA_VISIBLE_DEVICES=0 # Ray manages this, but set for clarity
       - MODEL_PATH=/models
       - BATCH_SIZE=32
       - MAX_BATCH_WAIT_MS=100
@@ -179,8 +188,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['1']
-              capabilities: [gpu]
+              device_ids: [ '1' ]
+              capabilities: [ gpu ]
 
   gpu-worker-3:
     build:
@@ -207,8 +216,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              device_ids: ['2']
-              capabilities: [gpu]
+              device_ids: [ '2' ]
+              capabilities: [ gpu ]
 
   # ============================================
   # Celery Workers (Task Queue Processors)
@@ -253,7 +262,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -271,7 +280,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -295,7 +304,7 @@ services:
       - backend
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -357,7 +366,7 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              capabilities: [gpu]
+              capabilities: [ gpu ]
 
   # ============================================
   # Frontend (React App)

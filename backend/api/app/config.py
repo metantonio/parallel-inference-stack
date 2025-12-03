@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     S3_ACCESS_KEY: str = "minioadmin"
     S3_SECRET_KEY: str = "minioadmin"
     
+    # Authentication
+    JWT_SECRET_KEY: str = "change-this-to-a-random-secret-key"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_EXPIRATION_MINUTES: int = 60
+    
     class Config:
         env_file = ".env"
 

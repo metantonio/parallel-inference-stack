@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, JSON, Enum
+from sqlalchemy import Column, String, Integer, DateTime, JSON, Enum, Boolean
 from datetime import datetime
 import enum
 from .database import Base
@@ -9,6 +9,15 @@ class TaskStatus(str, enum.Enum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    is_active = Column(Boolean, default=True)
 
 class InferenceRequest(Base):
     __tablename__ = "inference_requests"

@@ -2,7 +2,65 @@
 
 A production-ready, scalable AI inference system designed for parallel GPU processing with thousands of concurrent requests. Deploy on-premise and migrate seamlessly to AWS.
 
-![Architecture](docs/diagrams/architecture.png)
+```mermaid
+graph TB
+    subgraph "Client Layer"
+        UI[React Frontend]
+    end
+    
+    subgraph "Gateway Layer"
+        LB[NGINX Load Balancer]
+        RL[Rate Limiter]
+    end
+    
+    subgraph "API Layer"
+        API1[FastAPI Server 1]
+        API2[FastAPI Server 2]
+        API3[FastAPI Server 3]
+    end
+    
+    subgraph "Queue Layer"
+        Redis[(Redis Queue)]
+        PQ[Priority Queue]
+    end
+    
+    subgraph "Worker Layer"
+        Ray[Ray Serve Cluster]
+        W1[GPU Worker 1<br/>GPU:0]
+        W2[GPU Worker 2<br/>GPU:1]
+        W3[GPU Worker 3<br/>GPU:2]
+    end
+    
+    subgraph "Storage Layer"
+        PG[(PostgreSQL)]
+        Cache[(Redis Cache)]
+        S3[(MinIO/S3)]
+    end
+    
+    subgraph "Monitoring Layer"
+        Prom[Prometheus]
+        Graf[Grafana]
+        DCGM[NVIDIA DCGM]
+    end
+    
+    UI --> LB
+    LB --> RL
+    RL --> API1 & API2 & API3
+    API1 & API2 & API3 --> Redis
+    Redis --> PQ
+    PQ --> Ray
+    Ray --> W1 & W2 & W3
+    
+    API1 & API2 & API3 --> PG
+    API1 & API2 & API3 --> Cache
+    W1 & W2 & W3 --> S3
+    
+    W1 & W2 & W3 --> Prom
+    API1 & API2 & API3 --> Prom
+    Prom --> Graf
+    W1 & W2 & W3 --> DCGM
+    DCGM --> Prom
+```
 
 ## 🚀 Features
 

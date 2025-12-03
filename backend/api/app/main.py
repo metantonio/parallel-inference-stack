@@ -12,7 +12,7 @@ from .config import settings
 from .database import get_db, SessionLocal
 from .models import InferenceRequest, InferenceResponse, TaskStatus
 from .queue import enqueue_inference_task, get_task_status, get_task_result
-from .auth import get_current_user, User, Token, create_access_token, get_user, verify_password, users_db, ACCESS_TOKEN_EXPIRE_MINUTES
+from .auth import get_current_user, User, Token, create_access_token, get_user, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi.security import OAuth2PasswordRequestForm
 from datetime import timedelta
 
@@ -132,8 +132,8 @@ async def detailed_health_check(db: SessionLocal = Depends(get_db)):
 # ============================================
 
 @app.post("/token", response_model=Token, tags=["Auth"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = get_user(users_db, form_data.username)
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: SessionLocal = Depends(get_db)):
+    user = get_user(db, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
