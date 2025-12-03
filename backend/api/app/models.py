@@ -35,16 +35,3 @@ class InferenceRequest(Base):
     started_at = Column(DateTime, nullable=True)
     completed_at = Column(DateTime, nullable=True)
 
-class InferenceResponse(Base):
-    # This seems to be unused in main.py imports but was referenced. 
-    # Keeping it simple or we can remove if not needed by SQLAlchemy.
-    # Based on main.py, InferenceResponse is imported from .models but 
-    # used as a return type annotation which usually implies a Pydantic model 
-    # or it might be a mistake in main.py imports mixing Pydantic/ORM.
-    # However, main.py defines InferenceResponsePayload (Pydantic).
-    # Let's define a dummy class if needed or just skip.
-    # Looking at main.py: `from .models import InferenceRequest, InferenceResponse, TaskStatus`
-    # It uses InferenceResponsePayload for the endpoint response model.
-    # It uses InferenceResponse nowhere in the code shown in main.py.
-    # It might be a leftover. I will define it as a pass to avoid import error.
-    pass

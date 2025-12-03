@@ -10,7 +10,7 @@ import uuid
 
 from .config import settings
 from .database import get_db, SessionLocal
-from .models import InferenceRequest, InferenceResponse, TaskStatus
+from .models import InferenceRequest, TaskStatus
 from .queue import enqueue_inference_task, get_task_status, get_task_result
 from .auth import get_current_user, User, Token, create_access_token, get_user, verify_password, ACCESS_TOKEN_EXPIRE_MINUTES
 from fastapi.security import OAuth2PasswordRequestForm
@@ -32,7 +32,7 @@ app = FastAPI(
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.CORS_ORIGINS,
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

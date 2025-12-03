@@ -5,7 +5,7 @@ class Settings(BaseSettings):
     # Application
     APP_NAME: str = "AI Inference API"
     LOG_LEVEL: str = "info"
-    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ORIGINS: str = "*"
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@postgres:5432/inference"
@@ -24,6 +24,13 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str = "change-this-to-a-random-secret-key"
     JWT_ALGORITHM: str = "HS256"
     JWT_EXPIRATION_MINUTES: int = 60
+    
+    @property
+    def cors_origins_list(self) -> List[str]:
+        """Convert CORS_ORIGINS string to list."""
+        if self.CORS_ORIGINS == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
     
     class Config:
         env_file = ".env"
