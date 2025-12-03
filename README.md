@@ -492,17 +492,77 @@ kubectl create secret generic app-secrets \
 
 ## 🧪 Testing
 
-### Unit Tests
+The project includes comprehensive unit tests for both backend and frontend that can run **without Docker**.
 
+### Backend Tests (pytest + SQLite)
+
+Backend tests use **SQLite in-memory database** instead of PostgreSQL, so no database setup is required.
+
+**Install dependencies:**
 ```bash
-# Backend
 cd backend/api
-pytest tests/
+pip install -r requirements.txt
+pip install -r requirements-test.txt
+```
 
-# Frontend
+**Run all tests:**
+```bash
+python run_tests.py
+```
+
+**Run specific test file:**
+```bash
+pytest tests/test_config.py -v
+pytest tests/test_auth.py -v
+pytest tests/test_models.py -v
+```
+
+**Run with coverage:**
+```bash
+pytest --cov=app --cov-report=html
+# Open htmlcov/index.html in browser
+```
+
+**What's tested:**
+- ✅ Configuration loading and validation
+- ✅ Password hashing and verification
+- ✅ JWT token creation and validation
+- ✅ Database models (using SQLite in-memory)
+
+### Frontend Tests (Vitest + jsdom)
+
+Frontend tests use **jsdom** to simulate a browser environment without requiring a real browser.
+
+**Install dependencies:**
+```bash
 cd frontend
+npm install
+```
+
+**Run all tests:**
+```bash
 npm test
 ```
+
+**Run with UI:**
+```bash
+npm run test:ui
+```
+
+**Run with coverage:**
+```bash
+npm run test:coverage
+```
+
+**What's tested:**
+- ✅ Login component rendering and interactions
+- ✅ App authentication flow
+- ✅ Form validation
+- ✅ Token management
+
+### Complete Testing Guide
+
+For detailed testing instructions, see **[TESTING.md](TESTING.md)**
 
 ### Load Testing
 
