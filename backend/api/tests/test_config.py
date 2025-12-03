@@ -30,3 +30,23 @@ class TestSettings:
         settings = Settings()
         assert isinstance(settings.JWT_EXPIRATION_MINUTES, int)
         assert settings.JWT_EXPIRATION_MINUTES > 0
+
+    def test_cors_origins_list_with_wildcard(self):
+        """Should return ['*'] when CORS_ORIGINS='*'."""
+        settings = Settings(CORS_ORIGINS="*")
+        assert settings.cors_origins_list == ["*"]
+
+
+    def test_cors_origins_list_multiple(self):
+        """Should split comma-separated origins."""
+        settings = Settings(CORS_ORIGINS="http://localhost:3000, http://127.0.0.1:3000")
+        assert settings.cors_origins_list == [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+        ]
+
+
+    def test_cors_origins_list_single(self):
+        """Should return list with one origin."""
+        settings = Settings(CORS_ORIGINS="http://localhost:3000")
+        assert settings.cors_origins_list == ["http://localhost:3000"]
