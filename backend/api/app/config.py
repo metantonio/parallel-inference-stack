@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     OLLAMA_MODEL: str = "llama2"
     OLLAMA_TIMEOUT: int = 120
     
+    # vLLM Configuration (for GPU batching)
+    VLLM_BASE_URL: str = "http://localhost:8000"
+    VLLM_MODEL: str = "Qwen/Qwen2.5-Coder-7B-Instruct"
+    VLLM_TIMEOUT: int = 120
+    
     # API Configuration
     WORKERS: int = 4
     
@@ -64,6 +69,11 @@ class Settings(BaseSettings):
     def is_local_mode(self) -> bool:
         """Check if running in local development mode with Ollama."""
         return self.INFERENCE_MODE.lower() == "local"
+
+    @property
+    def is_vllm_mode(self) -> bool:
+        """Check if running in vLLM mode."""
+        return self.INFERENCE_MODE.lower() == "vllm"
     
     class Config:
         env_file = ".env"
