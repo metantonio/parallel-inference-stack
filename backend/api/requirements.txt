@@ -32,3 +32,6 @@ ray[serve]==2.9.0
 
 # Utilities
 python-dotenv==1.0.0
+
+# Inference (Optional - Linux/WSL only)
+vllm>=0.2.7

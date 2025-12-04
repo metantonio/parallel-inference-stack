@@ -233,6 +233,9 @@ def inference_task(self, task_payload: Dict[str, Any]):
         if settings.is_local_mode:
             # Local mode: Use Ollama
             result = _run_ollama_inference(task_payload)
+        elif settings.is_vllm_mode:
+            # vLLM mode: Use vLLM worker
+            result = _run_vllm_inference(task_payload)
         else:
             # Production mode: Use Ray Serve
             result = _run_ray_inference(task_payload)
@@ -291,6 +294,45 @@ def _run_ollama_inference(task_payload: Dict[str, Any]) -> Dict[str, Any]:
             base_url=settings.OLLAMA_BASE_URL,
             model=settings.OLLAMA_MODEL,
             timeout=settings.OLLAMA_TIMEOUT
+        )
+        return await worker.inference(task_payload["data"])
+    
+    # Run async function in sync context
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(run_inference())
+        return result
+    finally:
+        loop.close()
+
+
+def _run_vllm_inference(task_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run inference using vLLM (GPU batching mode)
+    
+    Args:
+        task_payload: Task payload with input data
+    
+    Returns:
+        Inference result
+    """
+    import asyncio
+    import sys
+    
+    # Add workers directory to path
+    import os
+    workers_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'workers')
+    if workers_path not in sys.path:
+        sys.path.insert(0, workers_path)
+    
+    from vllm_worker import get_vllm_worker
+    
+    async def run_inference():
+        worker = await get_vllm_worker(
+            base_url=settings.VLLM_BASE_URL,
+            model=settings.VLLM_MODEL,
+            timeout=settings.VLLM_TIMEOUT
         )
         return await worker.inference(task_payload["data"])
     
