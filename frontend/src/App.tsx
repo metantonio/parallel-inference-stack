@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import InferenceForm from './components/InferenceForm';
 import Login from './components/Login';
+
+// Create a client
+const queryClient = new QueryClient();
 
 function App() {
     const [token, setToken] = useState<string | null>(localStorage.getItem('auth_token'));
@@ -26,7 +30,11 @@ function App() {
         return <Login onLogin={handleLogin} />;
     }
 
-    return <InferenceForm onLogout={handleLogout} />;
+    return (
+        <QueryClientProvider client={queryClient}>
+            <InferenceForm onLogout={handleLogout} />
+        </QueryClientProvider>
+    );
 }
 
 export default App;
