@@ -211,7 +211,7 @@ def inference_task(self, task_payload: Dict[str, Any]):
     
     This task:
     1. Updates task status to 'processing'
-    2. Sends request to Ray Serve
+    2. Routes to Ollama (local mode) or Ray Serve (production mode)
     3. Waits for result
     4. Updates task status to 'completed' or 'failed'
     """
@@ -227,20 +227,15 @@ def inference_task(self, task_payload: Dict[str, Any]):
             }
         )
         
-        logger.info(f"Processing task {task_id}")
+        logger.info(f"Processing task {task_id} in {settings.INFERENCE_MODE} mode")
         
-        # Connect to Ray Serve
-        import ray
-        from ray import serve
-        
-        if not ray.is_initialized():
-            ray.init(address=settings.RAY_ADDRESS)
-        
-        # Get model deployment handle
-        model_handle = serve.get_deployment("InferenceModel").get_handle()
-        
-        # Run inference
-        result = ray.get(model_handle.remote(task_payload["data"]))
+        # Route based on inference mode
+        if settings.is_local_mode:
+            # Local mode: Use Ollama
+            result = _run_ollama_inference(task_payload)
+        else:
+            # Production mode: Use Ray Serve
+            result = _run_ray_inference(task_payload)
         
         # Update status to completed
         redis_client.hset(
@@ -268,3 +263,68 @@ def inference_task(self, task_payload: Dict[str, Any]):
         
         logger.error(f"Task {task_id} failed: {str(e)}")
         raise
+
+
+def _run_ollama_inference(task_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run inference using Ollama (local mode)
+    
+    Args:
+        task_payload: Task payload with input data
+    
+    Returns:
+        Inference result
+    """
+    import asyncio
+    import sys
+    
+    # Add workers directory to path
+    import os
+    workers_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'workers')
+    if workers_path not in sys.path:
+        sys.path.insert(0, workers_path)
+    
+    from ollama_worker import get_ollama_worker
+    
+    async def run_inference():
+        worker = await get_ollama_worker(
+            base_url=settings.OLLAMA_BASE_URL,
+            model=settings.OLLAMA_MODEL,
+            timeout=settings.OLLAMA_TIMEOUT
+        )
+        return await worker.inference(task_payload["data"])
+    
+    # Run async function in sync context
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    try:
+        result = loop.run_until_complete(run_inference())
+        return result
+    finally:
+        loop.close()
+
+
+def _run_ray_inference(task_payload: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Run inference using Ray Serve (production mode)
+    
+    Args:
+        task_payload: Task payload with input data
+    
+    Returns:
+        Inference result
+    """
+    import ray
+    from ray import serve
+    
+    if not ray.is_initialized():
+        ray.init(address=settings.RAY_ADDRESS)
+    
+    # Get model deployment handle
+    model_handle = serve.get_deployment("InferenceModel").get_handle()
+    
+    # Run inference
+    result = ray.get(model_handle.remote(task_payload["data"]))
+    
+    return result
+

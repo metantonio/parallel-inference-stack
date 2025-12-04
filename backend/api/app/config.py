@@ -31,6 +31,14 @@ class Settings(BaseSettings):
     MAX_BATCH_WAIT_MS: int = 100
     CUDA_VISIBLE_DEVICES: str = "0"
     
+    # Inference Mode Configuration
+    INFERENCE_MODE: str = "production"  # 'local' or 'production'
+    
+    # Ollama Configuration (for local development)
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama2"
+    OLLAMA_TIMEOUT: int = 120
+    
     # API Configuration
     WORKERS: int = 4
     
@@ -51,6 +59,11 @@ class Settings(BaseSettings):
         if self.CORS_ORIGINS == "*":
             return ["*"]
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
+    
+    @property
+    def is_local_mode(self) -> bool:
+        """Check if running in local development mode with Ollama."""
+        return self.INFERENCE_MODE.lower() == "local"
     
     class Config:
         env_file = ".env"
