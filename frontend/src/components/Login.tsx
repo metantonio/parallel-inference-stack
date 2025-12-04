@@ -38,43 +38,46 @@ export default function Login({ onLogin }: LoginProps) {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-blue-900 to-purple-900 flex items-center justify-center p-4">
-            <div className="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl p-8 border border-white/20 w-full max-w-md">
-                <h1 className="text-3xl font-bold text-white mb-6 text-center">
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-md">
+                <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
                     Parallel Inference
                 </h1>
+                <p className="text-gray-500 text-center mb-8 text-sm">
+                    Sign in to access the system
+                </p>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} className="space-y-5">
                     <div>
-                        <label className="block text-white font-semibold mb-2">
+                        <label className="block text-gray-700 text-sm font-medium mb-1.5">
                             Username
                         </label>
                         <input
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                             placeholder="Enter username"
                             required
                         />
                     </div>
 
                     <div>
-                        <label className="block text-white font-semibold mb-2">
+                        <label className="block text-gray-700 text-sm font-medium mb-1.5">
                             Password
                         </label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full px-4 py-3 bg-white/10 border border-white/30 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all duration-200"
                             placeholder="Enter password"
                             required
                         />
                     </div>
 
                     {error && (
-                        <div className="text-red-300 text-sm bg-red-500/20 p-3 rounded-lg border border-red-500/30">
+                        <div className="text-red-600 text-sm bg-red-50 p-3 rounded-lg border border-red-100">
                             {error}
                         </div>
                     )}
@@ -82,13 +85,13 @@ export default function Login({ onLogin }: LoginProps) {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none shadow-lg"
+                        className="w-full bg-gray-900 hover:bg-black text-white font-medium py-2.5 px-6 rounded-lg transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         {loading ? 'Signing in...' : 'Sign In'}
                     </button>
 
-                    <div className="text-center text-gray-400 text-sm">
-                        Use <code className="text-blue-300">testuser</code> / <code className="text-blue-300">password123</code>
+                    <div className="text-center text-gray-400 text-xs mt-6">
+                        Use <code className="text-gray-600 bg-gray-100 px-1 py-0.5 rounded">testuser</code> / <code className="text-gray-600 bg-gray-100 px-1 py-0.5 rounded">password123</code>
                     </div>
                 </form>
             </div>
