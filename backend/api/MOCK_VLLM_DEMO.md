@@ -70,10 +70,13 @@ source vllm-env/bin/activate
 pip install vllm
 
 # 6. Start vLLM server
+# In WSL2, run vLLM with reduced memory utilization
 python -m vllm.entrypoints.openai.api_server \
     --model Qwen/Qwen2.5-Coder-7B-Instruct \
     --port 8002 \
-    --host 0.0.0.0
+    --host 0.0.0.0 \
+    --gpu-memory-utilization 0.85 \
+    --max-model-len 2048
 ```
 
 And to make it permanent:
