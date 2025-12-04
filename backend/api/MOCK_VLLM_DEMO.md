@@ -44,6 +44,45 @@ $env:REAL_VLLM_URL="http://localhost:8002"
 uvicorn mock_vllm:app --port 8001
 ```
 
+Note: you may need to setup python properly in WSL2:
+
+```bash
+# In WSL2 Ubuntu terminal
+
+# 1. First, unset the Windows PATH that's interfering
+export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+# 2. Install Python and pip for Ubuntu
+sudo apt update
+sudo apt install python3 python3-pip python3-venv -y
+
+# 3. Verify it's using Ubuntu's Python
+which python3
+which pip3
+# Should show /usr/bin/python3 and /usr/bin/pip3
+
+# 4. Create a virtual environment (recommended)
+cd ~
+python3 -m venv vllm-env
+source vllm-env/bin/activate
+
+# 5. Now install vLLM
+pip install vllm
+
+# 6. Start vLLM server
+python -m vllm.entrypoints.openai.api_server \
+    --model Qwen/Qwen2.5-Coder-7B-Instruct \
+    --port 8002 \
+    --host 0.0.0.0
+```
+
+And to make it permanent:
+
+```bash
+echo 'export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
 #### B) Use Docker
 
 ```powershell
