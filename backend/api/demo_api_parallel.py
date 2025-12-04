@@ -48,9 +48,16 @@ app.add_middleware(
 )
 
 # Configuration
+# Configuration
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:14b")
 OLLAMA_TIMEOUT = int(os.getenv("OLLAMA_TIMEOUT", "120"))
+
+VLLM_BASE_URL = os.getenv("VLLM_BASE_URL", "http://localhost:8001")
+VLLM_MODEL = os.getenv("VLLM_MODEL", "Qwen/Qwen2.5-Coder-7B-Instruct")
+VLLM_TIMEOUT = int(os.getenv("VLLM_TIMEOUT", "120"))
+
+INFERENCE_MODE = os.getenv("INFERENCE_MODE", "local")
 MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "5"))
 
 # Task storage (in-memory for demo)
@@ -58,6 +65,25 @@ tasks: Dict[str, Dict[str, Any]] = {}
 task_queue = asyncio.Queue()
 active_tasks = 0
 task_semaphore = asyncio.Semaphore(MAX_CONCURRENT_REQUESTS)
+
+# Import workers
+from ollama_worker import get_ollama_worker
+from vllm_worker import get_vllm_worker
+
+async def get_worker():
+    """Get the appropriate worker based on INFERENCE_MODE"""
+    if INFERENCE_MODE.lower() == "vllm":
+        return await get_vllm_worker(
+            base_url=VLLM_BASE_URL,
+            model=VLLM_MODEL,
+            timeout=VLLM_TIMEOUT
+        )
+    else:
+        return await get_ollama_worker(
+            base_url=OLLAMA_BASE_URL,
+            model=OLLAMA_MODEL,
+            timeout=OLLAMA_TIMEOUT
+        )
 
 # Request/Response Models
 class InferenceRequest(BaseModel):
@@ -109,12 +135,8 @@ async def process_inference_task(task_id: str, data: Dict[str, Any]):
         async with task_semaphore:
             active_tasks += 1
             
-            # Get Ollama worker
-            worker = await get_ollama_worker(
-                base_url=OLLAMA_BASE_URL,
-                model=OLLAMA_MODEL,
-                timeout=OLLAMA_TIMEOUT
-            )
+            # Get worker
+            worker = await get_worker()
             
             # Run inference
             result = await worker.inference(data)
@@ -140,19 +162,20 @@ async def process_inference_task(task_id: str, data: Dict[str, Any]):
 @app.get("/health")
 async def health_check():
     """Health check endpoint with parallel processing info"""
-    worker = await get_ollama_worker(
-        base_url=OLLAMA_BASE_URL,
-        model=OLLAMA_MODEL,
-        timeout=OLLAMA_TIMEOUT
-    )
+    worker = await get_worker()
     
     is_healthy = await worker.health_check()
     models = await worker.list_models() if is_healthy else []
     
+    # Determine current model and URL based on mode
+    current_model = VLLM_MODEL if INFERENCE_MODE.lower() == "vllm" else OLLAMA_MODEL
+    current_url = VLLM_BASE_URL if INFERENCE_MODE.lower() == "vllm" else OLLAMA_BASE_URL
+    
     return {
         "status": "healthy" if is_healthy else "unhealthy",
-        "ollama_url": OLLAMA_BASE_URL,
-        "model": OLLAMA_MODEL,
+        "mode": INFERENCE_MODE,
+        "backend_url": current_url,
+        "model": current_model,
         "available_models": models,
         "max_concurrent_requests": MAX_CONCURRENT_REQUESTS,
         "active_tasks": active_tasks,
@@ -194,7 +217,7 @@ async def direct_inference(request: InferenceRequest):
         
         return {
             "output": f"Task queued with ID: {task_id}",
-            "model": OLLAMA_MODEL,
+            "model": VLLM_MODEL if INFERENCE_MODE.lower() == "vllm" else OLLAMA_MODEL,
             "processing_time_ms": 0,
             "status": "queued",
             "timestamp": datetime.utcnow().isoformat()
@@ -202,11 +225,7 @@ async def direct_inference(request: InferenceRequest):
     else:
         # Sync mode: wait for result
         try:
-            worker = await get_ollama_worker(
-                base_url=OLLAMA_BASE_URL,
-                model=OLLAMA_MODEL,
-                timeout=OLLAMA_TIMEOUT
-            )
+            worker = await get_worker()
             
             result = await worker.inference(data)
             
@@ -365,11 +384,15 @@ async def get_stats():
 @app.on_event("startup")
 async def startup_event():
     print("=" * 70)
-    print("🚀 Parallel Ollama API Started")
+    print(f"🚀 Parallel Inference API Started (Mode: {INFERENCE_MODE})")
     print("=" * 70)
     print(f"📋 Configuration:")
-    print(f"   Ollama URL: {OLLAMA_BASE_URL}")
-    print(f"   Model: {OLLAMA_MODEL}")
+    if INFERENCE_MODE.lower() == "vllm":
+        print(f"   vLLM URL: {VLLM_BASE_URL}")
+        print(f"   Model: {VLLM_MODEL}")
+    else:
+        print(f"   Ollama URL: {OLLAMA_BASE_URL}")
+        print(f"   Model: {OLLAMA_MODEL}")
     print(f"   Max Concurrent Requests: {MAX_CONCURRENT_REQUESTS}")
     print()
     print(f"📚 API Documentation:")
