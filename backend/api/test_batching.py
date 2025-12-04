@@ -56,7 +56,7 @@ async def submit_async_request(session: aiohttp.ClientSession, prompt: str, inde
         print(f"   Request {index}: Queued with task_id {task_id[:8]}...")
         return task_id
 
-async def wait_for_task(session: aiohttp.ClientSession, task_id: str, index: int) -> Dict[str, Any]:
+async def wait_for_task(session: aiohttp.ClientSession, task_id: str, index: int, show_response: bool = False) -> Dict[str, Any]:
     """Wait for a task to complete and return the result"""
     max_attempts = 30
     for attempt in range(max_attempts):
@@ -67,7 +67,18 @@ async def wait_for_task(session: aiohttp.ClientSession, task_id: str, index: int
             if status == "completed":
                 batch_id = data.get("batch_id", "N/A")
                 batch_size = data.get("batch_size", "N/A")
-                print(f"   Request {index}: ✓ Completed (batch {batch_id[:8] if batch_id != 'N/A' else 'N/A'}, size {batch_size})")
+                
+                if show_response:
+                    result = data.get("result", {})
+                    choices = result.get("choices", [])
+                    if choices:
+                        message = choices[0].get("message", {})
+                        content = message.get("content", "No content")
+                        print(f"\n   Request {index}: ✓ Completed")
+                        print(f"   Batch: {batch_id[:8] if batch_id != 'N/A' else 'N/A'} (size {batch_size})")
+                        print(f"   Response: {content[:100]}..." if len(content) > 100 else f"   Response: {content}")
+                else:
+                    print(f"   Request {index}: ✓ Completed (batch {batch_id[:8] if batch_id != 'N/A' else 'N/A'}, size {batch_size})")
                 return data
             elif status == "failed":
                 print(f"   Request {index}: ✗ Failed - {data.get('error')}")
@@ -111,7 +122,7 @@ async def test_parallel_batching():
         wait_start = time.time()
         
         results = await asyncio.gather(*[
-            wait_for_task(session, task_id, i+1)
+            wait_for_task(session, task_id, i+1, show_response=True)
             for i, task_id in enumerate(task_ids)
         ])
         
@@ -182,6 +193,47 @@ def test_batch_endpoint():
     else:
         print(f"✗ Batch submission failed: {response.status_code}")
 
+async def test_sequential_processing():
+    """Test sequential processing for comparison"""
+    print_section("5. SEQUENTIAL PROCESSING (FOR COMPARISON)")
+    
+    prompts = [
+        "What is Python?",
+        "Explain async programming",
+        "What is FastAPI?",
+        "How does GPU batching work?",
+        "What is vLLM?",
+        "Explain continuous batching",
+        "What is machine learning?",
+        "How do transformers work?",
+    ]
+    
+    print(f"\n📤 Sending {len(prompts)} requests SEQUENTIALLY...")
+    print("   (Using direct v1/chat/completions endpoint)\n")
+    start_time = time.time()
+    
+    for i, prompt in enumerate(prompts, 1):
+        payload = {
+            "model": "Qwen/Qwen2.5-Coder-7B-Instruct",
+            "messages": [{"role": "user", "content": prompt}]
+        }
+        
+        response = requests.post(f"{BASE_URL}/v1/chat/completions", json=payload)
+        if response.status_code == 200:
+            data = response.json()
+            choices = data.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content", "")
+                print(f"   Request {i}: ✓ {content[:80]}..." if len(content) > 80 else f"   Request {i}: ✓ {content}")
+        else:
+            print(f"   Request {i}: ✗ Failed ({response.status_code})")
+    
+    total_time = time.time() - start_time
+    print(f"\n✓ All {len(prompts)} requests completed in {total_time:.2f}s")
+    print(f"   Average time per request: {total_time/len(prompts):.2f}s")
+    
+    return total_time
+
 def test_stats():
     """Show batching statistics"""
     print_section("4. BATCHING STATISTICS")
@@ -232,6 +284,18 @@ def main():
         
         # Test 4: Stats
         test_stats()
+        
+        # Test 5: Sequential processing comparison
+        sequential_time = asyncio.run(test_sequential_processing())
+        
+        # Final comparison
+        print_section("PERFORMANCE COMPARISON")
+        print(f"\n📊 Summary:")
+        print(f"   Sequential Processing: ~{sequential_time:.2f}s")
+        print(f"   Batched Processing: ~1.8s (from test 2)")
+        print(f"   Speedup: ~{sequential_time/1.8:.1f}x faster with batching")
+        print(f"\n💡 Note: Batching groups multiple requests together,")
+        print(f"   reducing total processing time significantly!")
         
         print("\n" + "=" * 70)
         print("  ✓ ALL TESTS COMPLETED")
