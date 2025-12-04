@@ -505,25 +505,37 @@ CUDA_VISIBLE_DEVICES=2 celery -A tasks worker --concurrency=1
 
 ---
 
-### Dynamic Batching
+### Dynamic Batching & Single GPU Parallelism
 
-Ray Serve automatically batches requests:
+Ray Serve automatically batches requests to maximize GPU throughput, allowing a **single GPU to process multiple requests in parallel**.
 
+**How it works:**
+1. **Concurrent Arrival**: Multiple user requests arrive at the API simultaneously.
+2. **Batch Formation**: Instead of processing them sequentially, Ray Serve holds requests in a queue for a tiny window (e.g., 100ms) or until a batch size (e.g., 32) is reached.
+3. **Parallel Execution**: The worker stacks these inputs into a single tensor (e.g., shape `[32, 768]`) and sends it to the GPU.
+4. **Simultaneous Inference**: The GPU processes the entire batch in a single forward pass, leveraging its massive parallel architecture.
+
+**Code Implementation:**
 ```python
 @serve.deployment
 class BatchedModel:
     @serve.batch(max_batch_size=32, batch_wait_timeout_s=0.1)
     async def handle_batch(self, requests):
-        # Process batch of up to 32 requests
-        batch_input = [r.data for r in requests]
+        # 1. Receive list of up to 32 requests
+        # 2. Stack inputs into one tensor
+        batch_input = torch.stack([r.data for r in requests])
+        
+        # 3. Run inference on all items simultaneously
         batch_output = self.model(batch_input)
+        
+        # 4. Return results to respective callers
         return batch_output
 ```
 
 **Benefits:**
-- 5-10x throughput improvement
-- Optimal GPU utilization
-- Automatic batch size tuning
+- **True Parallelism**: 32 requests are processed in roughly the same time as 1 request.
+- **High Throughput**: Increases system capacity by 10-20x compared to sequential processing.
+- **Cost Efficiency**: Maximizes utilization of expensive GPU hardware.
 
 ---
 
